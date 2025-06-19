@@ -9,12 +9,26 @@ user_prompt = st.text_input("Enter your dreamy date idea ✨", placeholder="e.g.
 
 if st.button("Generate Date Ideas") and user_prompt:
     with st.spinner("Fetching magical date spots..."):
-        cafe_results = search_cafes(user_prompt)
-        cafes_info = cafe_results[:5]  # Limit to 5 to save tokens
-        plan = generate_card_details(user_prompt, cafes_info)
+        try:
+            raw_results = search_cafes(user_prompt)
 
-    if plan:
-        st.success("✨ Your perfect date spots:")
-        st.markdown(plan)
-    else:
-        st.error("Couldn't generate a plan right now. Try again.")
+            # Simplify and normalize the cafe info
+            cafes_info = []
+            for r in raw_results[:5]:
+                cafes_info.append({
+                    "name": r.get("title", "Unknown"),
+                    "address": r.get("snippet", "No details"),
+                    "price": "₹N/A",
+                    "link": r.get("link", "#"),
+                    "image": r.get("pagemap", {}).get("cse_image", [{}])[0].get("src", "")
+                })
+
+            # Step 1: Generate AI plan
+            ai_response = generate_card_details(user_prompt, cafes_info)
+
+            # Step 3: Show raw plan too (optional)
+            st.subheader("💌 Full Date Plan (AI Generated)")
+            st.markdown(ai_response)
+
+        except Exception as e:
+            st.error(f"An error occurred: {e}")

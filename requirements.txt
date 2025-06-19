@@ -3,3 +3,4 @@ requests
 together
 python-dotenv
 Pillow
+googlesearch-python

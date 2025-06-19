@@ -4,9 +4,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 def call_together_ai(prompt):
+    import os
+    import requests
+
+    TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
     url = "https://api.together.xyz/inference"
     headers = {
         "Authorization": f"Bearer {TOGETHER_API_KEY}",
@@ -15,33 +18,42 @@ def call_together_ai(prompt):
     body = {
         "model": "mistralai/Mixtral-8x7B-Instruct-v0.1",
         "prompt": prompt,
-        "max_tokens": 500,
-        "temperature": 0.8
+        "max_tokens": 600,
+        "temperature": 0.85
     }
+
     res = requests.post(url, headers=headers, json=body)
-    return res.json().get("output", None) if res.status_code == 200 else None
+    if res.status_code == 200:
+        try:
+            return res.json()["choices"][0]["text"].strip()
+        except (KeyError, IndexError):
+            return None
+    return None
 
-def generate_card_details(user_prompt, cafe_snippets):
-    cafes_text = "\n\n".join([f"{c['title']}: {c['snippet']}" for c in cafe_snippets])
+def generate_card_details(user_prompt, cafes_info):
+    formatted_list = ""
+    for i, cafe in enumerate(cafes_info, start=1):
+        formatted_list += f"{i}. {cafe['name']} — {cafe['address']}\n"
+
     prompt = f"""
-User asked: "{user_prompt}"
+You're a romantic date planner AI.
 
-Below are some cafes. For each one, return:
-1. 📍 Name
-2. 🕒 Best time
-3. 🎶 Vibe
-4. 💸 Approx cost
-5. ✨ Short romantic reason why it's perfect
+Here’s what the user wants:
+"{user_prompt}"
 
-Cafes:
-{cafes_text}
+Here are 5 potential cafes/places:
+{formatted_list}
 
-Format each cafe with emojis and in 5 lines, like:
-📍 Cafe Name  
-🕒 Best time  
-🎶 Vibe  
-💸 Approx cost  
-✨ Comment
+Now generate a romantic date suggestion for each spot in this format (in markdown):
+
+📍 **Cafe Name, Area**  
+🕰️ Best time: your suggested 2-hour window  
+🎶 Short vibe description (like fairy lights, music, beachy)  
+💸 Approx ₹[amount] for two  
+✨ “One cute line about why it’s a great date spot”
+
+Write 10-12 cards only, based on your favorite ones from above. Keep it fun, warm, and vivid.
 """
 
     return call_together_ai(prompt)
+
